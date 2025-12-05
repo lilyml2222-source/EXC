@@ -74,6 +74,17 @@ local function CopyToClipboard(text)
     end)
 end
 
+-- Fungsi cek posisi user di whitelist
+local function GetWhitelistPosition(username)
+    username = username:lower()
+    for i, name in ipairs(WhitelistedUsers) do
+        if name == username then
+            return i
+        end
+    end
+    return "N/A"
+end
+
 -- ==================== PROSES VERIFIKASI ====================
 -- Load whitelist dulu
 LoadWhitelist()
@@ -120,7 +131,7 @@ Rayfield:Notify({
 print("[SERENA EXC] User " .. PlayerName .. " berhasil diverifikasi!")
 
 -- ==================== TAB UTAMA - AUTO WALK ====================
-local MainTab = Window:CreateTab("Main", 4483345998) -- Changed from AUTO WALK to Main
+local MainTab = Window:CreateTab("Main", 4483345998)
 
 -- Header
 MainTab:CreateParagraph({
@@ -251,9 +262,15 @@ DiscordTab:CreateButton({
             Image = 4483345998,
         })
         task.wait(1)
+        -- Perbaikan: menggunakan syn.execute untuk membuka browser
         pcall(function()
-            local HttpService = game:GetService("HttpService")
-            HttpService:GetAsync("http://www.roblox.com/chat/clickable?chat=" .. DiscordInfo.InviteLink)
+            if syn and syn.execute then
+                syn.execute("start " .. DiscordInfo.InviteLink)
+            else
+                -- Fallback untuk executor lain
+                local HttpService = game:GetService("HttpService")
+                HttpService:GetAsync(DiscordInfo.InviteLink, true)
+            end
         end)
     end,
 })
@@ -328,16 +345,10 @@ WhitelistTab:CreateParagraph({
 WhitelistTab:CreateSection("📊 Statistics")
 
 WhitelistTab:CreateLabel("Total Whitelisted Users: " .. #WhitelistedUsers)
-WhitelistTab:CreateLabel("Your Position: #" .. tostring(
-    function()
-        for i, name in ipairs(WhitelistedUsers) do
-            if name == PlayerName:lower() then
-                return i
-            end
-        end
-        return "N/A"
-    end()
-))
+
+-- PERBAIKAN: Fungsi dipisah untuk menghindari error
+local userPosition = GetWhitelistPosition(PlayerName)
+WhitelistTab:CreateLabel("Your Position: #" .. tostring(userPosition))
 
 -- Whitelist Controls
 WhitelistTab:CreateSection("🔄 Controls")
@@ -346,9 +357,11 @@ WhitelistTab:CreateButton({
     Name = "🔄 Refresh Whitelist",
     Callback = function()
         if LoadWhitelist() then
+            -- Update position setelah refresh
+            userPosition = GetWhitelistPosition(PlayerName)
             Rayfield:Notify({
                 Title = "✅ Whitelist Updated",
-                Content = "Total users: " .. #WhitelistedUsers,
+                Content = "Total users: " .. #WhitelistedUsers .. "\nYour position: #" .. userPosition,
                 Duration = 3,
                 Image = 4483345998,
             })
